@@ -6,11 +6,11 @@
     -a <addr> — IP-адрес для прослушивания (по умолчанию слушает все доступные адреса).
 """
 
-import socket
-import sys
 from socket import *
 from common.variables import *
-from common.utils import *
+from common.utils import recieve_msg, send_msg
+import sys
+
 
 def take_server_cmd_params():
     #  sys.argv = ['server.py', '-p', 8888, '-a', '127.0.0.1']
@@ -25,8 +25,15 @@ def take_server_cmd_params():
         listen_address = sys.argv[sys.argv.index('-a') + 1]
         # а как проверить корректен ли порт?
     else:
-        listen_address = IP_ADDRESS_DEFAULT
-    return listen_port, listen_address
+        listen_address = SERVER_ADDRESS_DEFAULT
+    return listen_address, listen_port
+
+
+def check_client_msg(client_msg):
+    if ACTION and TIME and USER in client_msg \
+            and client_msg[ACTION] == PRESENCE:
+        return {RESPONSE: 200}
+    return {ERROR: 'Bad request'}
 
 
 # transport = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -36,24 +43,27 @@ def take_server_cmd_params():
 # че за транспорт?
 SERV_SOCK = socket(AF_INET, SOCK_STREAM)
 SERV_SOCK.bind(take_server_cmd_params())
-SERV_SOCK.listen(1)
+SERV_SOCK.listen(MAX_CONNECTION)
 
 try:
     while True:
         CLIENT_SOCK, ADDR = SERV_SOCK.accept()
-        DATA = CLIENT_SOCK.recv(4096)
-        print(f"Сообщение: {DATA.decode('utf-8')} было отправлено клиентом: {ADDR})")
-        MSG = 'привет, клиент!'
-        CLIENT_SOCK.send(MSG.encode('utf-8'))
+
+        from_client_msg = recieve_msg(CLIENT_SOCK)
+        print('Получено от клиента: ', from_client_msg)
+
+        from_server_msg = check_client_msg(from_client_msg)
+        print('Отправлено клиенту: ', from_server_msg)
+
+        send_msg(CLIENT_SOCK, from_server_msg)
+        # DATA = CLIENT_SOCK.recv(4096)
+        # print(f"Сообщение: {DATA.decode('utf-8')} было отправлено клиентом: {ADDR})")
+        # MSG = 'привет, клиент!'
+        # CLIENT_SOCK.send(MSG.encode('utf-8'))
         CLIENT_SOCK.close()
 finally:
     SERV_SOCK.close()
 
-
-def check_client_msg(client_msg):
-    if ACTION in client_msg and TIME in client_msg and USER in client_msg and ACTION == PRESENCE:
-        return {RESPONSE: 200}
-    return 'Bad request'
 
 
 

@@ -1,9 +1,12 @@
 """константы"""
 
 # константы для сокетов:
-IP_ADDRESS_DEFAULT = ''
+SERVER_ADDRESS_DEFAULT = ''
+CLIENT_ADDRESS_DEFAULT = 'localhost'
 PORT_DEFAULT = 7777
-
+ENCODING = 'utf-8'
+MAX_CONNECTION = 5
+MAX_PACKAGE_LENGTH = 4096
 
 
 #  константы JIM протокола:
@@ -14,3 +17,5 @@ ACCOUNT_NAME = 'name_account'
 STATUS = 'status'
 TYPE = 'type'
 PRESENCE = 'presence'
+RESPONSE = 'response'
+ERROR = 'error'

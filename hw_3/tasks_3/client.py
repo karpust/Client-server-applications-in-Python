@@ -6,26 +6,34 @@
     параметры командной строки скрипта client.py <addr> [<port>]:
     addr — ip-адрес сервера; port — tcp-порт на сервере, по умолчанию 7777.
 """
+
+from common.utils import *
+import sys
 import time
 from socket import *
 from common.variables import *
-from common.utils import *
-import sys
 
 
 def take_client_cmd_params():
     # sys.argv = ['client.py', '127.0.0.1', 8888]
-    server_address = sys.argv[1]
-    server_port = int(sys.argv[2])
+    try:
+        server_address = sys.argv[1]
+    except IndexError:
+        server_address = CLIENT_ADDRESS_DEFAULT
+    try:
+        server_port = int(sys.argv[2])
+    except IndexError:
+        server_port = PORT_DEFAULT
+
     if server_port < 1024 or server_port > 65535:
         print('Вы ввели неверный номер порта')
     else:
         server_port = PORT_DEFAULT
-    return server_port, server_address
+    return server_address, server_port
 
 
 def create_presence_msg(name_account='guest'):
-    content = {
+    return {
         ACTION: PRESENCE,
         TIME: time.time(),
         TYPE: STATUS,
@@ -34,18 +42,19 @@ def create_presence_msg(name_account='guest'):
             STATUS: "I'm online"
         }
     }
-    return content
-
 
 
 CLIENT_SOCK = socket(AF_INET, SOCK_STREAM)
 CLIENT_SOCK.connect(take_client_cmd_params())
-# MSG = 'привет, сервер!'
 client_msg = create_presence_msg()
-CLIENT_SOCK.send(MSG.encode('utf-8'))
+print('Отправлено серверу: ', client_msg)
+send_msg(CLIENT_SOCK, client_msg)
+# MSG = 'привет, сервер!'
+# CLIENT_SOCK.send(MSG.encode('utf-8'))
 # send_msg(transport, msg_to_server)
-DATA = CLIENT_SOCK.recv(4096)
-print(f"Сообщение от сервера: {DATA.decode('utf-8')} длиной {len(DATA)} байт")
+# DATA = CLIENT_SOCK.recv(4096)
+DATA = recieve_msg(CLIENT_SOCK)
+print('Получено от сервера: ', DATA)
 CLIENT_SOCK.close()
 
 
