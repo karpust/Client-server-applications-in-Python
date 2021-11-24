@@ -1,7 +1,7 @@
 """константы"""
 
 # константы для сокетов:
-IP_ADDRESS_DEFAULT = '127.0.0.1'
+IP_ADDRESS_DEFAULT = ''
 PORT_DEFAULT = 7777
 
 

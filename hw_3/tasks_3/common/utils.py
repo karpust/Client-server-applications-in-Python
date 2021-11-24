@@ -7,6 +7,7 @@ close — закрыть соединение
 
 
 def send_data():
+
     pass
 
 
