@@ -36,30 +36,19 @@ def check_client_msg(client_msg):
     return {ERROR: 'Bad request'}
 
 
-# transport = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-# transport.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-# transport.bind(fill_cmd_params())
-# transport.listen(1)
-# че за транспорт?
 SERV_SOCK = socket(AF_INET, SOCK_STREAM)
 SERV_SOCK.bind(take_server_cmd_params())
 SERV_SOCK.listen(MAX_CONNECTION)
 
+
 try:
     while True:
         CLIENT_SOCK, ADDR = SERV_SOCK.accept()
-
         from_client_msg = recieve_msg(CLIENT_SOCK)
         print('Получено от клиента: ', from_client_msg)
-
         from_server_msg = check_client_msg(from_client_msg)
         print('Отправлено клиенту: ', from_server_msg)
-
         send_msg(CLIENT_SOCK, from_server_msg)
-        # DATA = CLIENT_SOCK.recv(4096)
-        # print(f"Сообщение: {DATA.decode('utf-8')} было отправлено клиентом: {ADDR})")
-        # MSG = 'привет, клиент!'
-        # CLIENT_SOCK.send(MSG.encode('utf-8'))
         CLIENT_SOCK.close()
 finally:
     SERV_SOCK.close()

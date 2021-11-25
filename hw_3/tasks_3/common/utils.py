@@ -15,9 +15,12 @@ def send_msg(socket_to, msg_dict):
     декодирует в байты
     отправляет данные
     """
-    msg_json_str = json.dumps(msg_dict)  # сообщение -> строкa в json
-    msg_bytes = msg_json_str.encode(ENCODING)  # сообщение в байты
-    socket_to.send(msg_bytes)  # сокет сервера|клиента
+    if isinstance(msg_dict, dict):
+        msg_json_str = json.dumps(msg_dict)  # dict json -> str json
+        msg_bytes = msg_json_str.encode(ENCODING)  # сообщение в байты
+        socket_to.send(msg_bytes)  # сокет сервера|клиента
+    else:
+        print('Message type is not dict')
 
 
 def recieve_msg(socket):
@@ -26,6 +29,7 @@ def recieve_msg(socket):
     декодируем
     в json.loads
     """
+
     msg_bytes = socket.recv(MAX_PACKAGE_LENGTH)  # получили в байтах
     msg_decode = msg_bytes.decode(ENCODING)  # декодировали
     msg_json_dict = json.loads(msg_decode)  # в jsonObj(dict)
