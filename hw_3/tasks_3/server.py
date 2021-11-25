@@ -41,7 +41,8 @@ def take_server_cmd_params():
 
 def check_client_msg(client_msg):
     if ACTION and TIME and USER in client_msg \
-            and client_msg[ACTION] == PRESENCE:
+            and client_msg[ACTION] == PRESENCE \
+            and client_msg[USER][ACCOUNT_NAME] == 'Guest':
         return {RESPONSE: 200}
     return {ERROR: 'Bad request'}
 

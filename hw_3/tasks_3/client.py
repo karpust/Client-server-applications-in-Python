@@ -37,7 +37,7 @@ def take_client_cmd_params():
     return server_address, server_port
 
 
-def create_presence_msg(name_account='guest'):
+def create_presence_msg(name_account='Guest'):
     return {
         ACTION: PRESENCE,
         TIME: time.time(),
