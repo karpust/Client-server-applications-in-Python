@@ -10,20 +10,30 @@ from socket import *
 from common.variables import *
 from common.utils import recieve_msg, send_msg
 import sys
+from ipaddress import ip_address
 
 
 def take_server_cmd_params():
     #  sys.argv = ['server.py', '-p', 8888, '-a', '127.0.0.1']
     if '-p' in sys.argv:
-        listen_port = int(sys.argv[sys.argv.index('-p') + 1])
+        try:
+            listen_port = int(sys.argv[sys.argv.index('-p') + 1])
+        except ValueError:
+            print('Введенное значение порта должно быть числом, попробуйте снова')
+            sys.exit()
         if listen_port < 1024 or listen_port > 65535:
-            print('Вы ввели неверный номер порта')
+            print('Вы ввели неверный номер порта, попробуйте снова')
+            sys.exit()
     else:
         listen_port = PORT_DEFAULT
 
     if '-a' in sys.argv:
         listen_address = sys.argv[sys.argv.index('-a') + 1]
-        # а как проверить корректен ли порт?
+        try:
+            ip_address(listen_address)
+        except ValueError:
+            print('Некорректный ip-адрес, попробуйте снова')
+            sys.exit()
     else:
         listen_address = SERVER_ADDRESS_DEFAULT
     return listen_address, listen_port

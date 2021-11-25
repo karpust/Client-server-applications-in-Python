@@ -12,22 +12,27 @@ import sys
 import time
 from socket import *
 from common.variables import *
+from ipaddress import ip_address
 
 
 def take_client_cmd_params():
     # sys.argv = ['client.py', '127.0.0.1', 8888]
     try:
         server_address = sys.argv[1]
+        try:
+            ip_address(server_address)
+        except ValueError:
+            print('Некорректный ip-адрес, попробуйте снова')
+            sys.exit()
     except IndexError:
         server_address = CLIENT_ADDRESS_DEFAULT
+
     try:
         server_port = int(sys.argv[2])
+        if server_port < 1024 or server_port > 65535:
+            print('Вы ввели неверный номер порта, попробуйте снова')
+            sys.exit()
     except IndexError:
-        server_port = PORT_DEFAULT
-
-    if server_port < 1024 or server_port > 65535:
-        print('Вы ввели неверный номер порта')
-    else:
         server_port = PORT_DEFAULT
     return server_address, server_port
 
