@@ -1,13 +1,15 @@
 import json
-from common.variables import *
-import socket
+from socket import socket
+from .variables import ENCODING, MAX_PACKAGE_LENGTH
 
 
 class Sock(socket):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, family, type):
+        # конструктор класса, family и type заданы в родителе по умолчанию, их не передаем, но передадим
+        super().__init__(family, type)  # чтобы обратиться к параметрам родителя и изменить их если нужно
 
-    def send_msg(self, socket_to, msg_dict):
+    @staticmethod
+    def send_msg(socket_to, msg_dict):
         """
         принимает словарь в джейсоне
         декодирует в байты
@@ -20,7 +22,8 @@ class Sock(socket):
         else:
             print('Message type is not dict')
 
-    def recieve_msg(self, socket_from):
+    @staticmethod
+    def recieve_msg(socket_from):
         """
         проверяет если байты пришли
         декодируем
