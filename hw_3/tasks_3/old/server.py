@@ -8,7 +8,7 @@
 
 from socket import *
 from common.variables import *
-from common.utils import recieve_msg, send_msg
+from old.utils import recieve_msg, send_msg
 import sys
 from ipaddress import ip_address
 

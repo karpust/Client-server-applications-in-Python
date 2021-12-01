@@ -11,6 +11,7 @@ from ipaddress import ip_address
 from common.variables import ACTION, TIME, USER, PRESENCE, ACCOUNT_NAME, RESPONSE, ERROR, \
     MAX_CONNECTION, PORT_DEFAULT, SERVER_ADDRESS_DEFAULT
 from common.utils_oop import Sock
+from socket import SOL_SOCKET, SO_REUSEADDR
 
 
 class ServSock(Sock):
@@ -20,14 +21,15 @@ class ServSock(Sock):
         self.listen_port = listen_port
 
     @staticmethod
-    def check_client_msg(client_msg):
-        if ACTION and TIME and USER in client_msg \
-                and client_msg[ACTION] == PRESENCE \
+    def check_presence_msg(client_msg):
+        if ACTION in client_msg and TIME in client_msg \
+                and USER in client_msg and client_msg[ACTION] == PRESENCE \
                 and client_msg[USER][ACCOUNT_NAME] == 'Guest':
             return {RESPONSE: 200}
-        return {ERROR: 'Bad request'}
+        return {RESPONSE: 400, ERROR: 'Bad request'}
 
     def server_connect(self):  # сервер, клиент
+        self.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         self.bind((self.listen_address, self.listen_port))
         self.listen(MAX_CONNECTION)
         print('Сервер в ожидании клиента')
@@ -36,7 +38,7 @@ class ServSock(Sock):
             print('Сервер соединен с клиентом')
             from_client_msg = super().recieve_msg(client)
             print('Получено от клиента: ', from_client_msg)
-            from_server_msg = self.check_client_msg(from_client_msg)
+            from_server_msg = self.check_presence_msg(from_client_msg)
             print('Отправлено клиенту: ', from_server_msg)
             super().send_msg(client, from_server_msg)
             client.close()
@@ -65,12 +67,15 @@ def take_server_cmd_params():
             sys.exit()
     else:
         listen_address = SERVER_ADDRESS_DEFAULT
-    server = ServSock(listen_address, listen_port)
-    server.server_connect()
+    return listen_address, listen_port
+
+
+server = ServSock(*take_server_cmd_params())
 
 
 if __name__ == '__main__':
-    take_server_cmd_params()
+    server.server_connect()
+
 
 
 

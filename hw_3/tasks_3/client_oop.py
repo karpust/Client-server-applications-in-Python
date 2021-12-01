@@ -21,8 +21,8 @@ class ClientSock(Sock):
         self.server_address = server_address
         self.server_port = server_port
 
-    @property
-    def create_presence_msg(self, name_account='Guest'):
+    @staticmethod
+    def create_presence_msg(name_account='Guest'):
         return {
             ACTION: PRESENCE,
             TIME: time.time(),
@@ -35,13 +35,15 @@ class ClientSock(Sock):
 
     @staticmethod
     def check_server_msg(server_msg):
-        if RESPONSE in server_msg and server_msg[RESPONSE] == 200:
-            return '200: OK'
-        return '400:' + server_msg[ERROR]
+        if RESPONSE in server_msg:
+            if server_msg[RESPONSE] == 200:
+                return '200: OK'
+            return '400: ' + server_msg[ERROR]
+        raise ValueError
 
     def client_connect(self):
         self.connect((self.server_address, self.server_port))
-        client_msg = self.create_presence_msg
+        client_msg = self.create_presence_msg()
         print('Отправлено серверу: ', client_msg)
         super().send_msg(self, client_msg)
         server_msg = super().recieve_msg(self)
@@ -70,10 +72,13 @@ def take_client_cmd_params():
             sys.exit()
     except IndexError:
         server_port = PORT_DEFAULT
-    client = ClientSock(server_address, server_port)
-    client.client_connect()
+        return server_address, server_port
+
+
+client = ClientSock(*take_client_cmd_params())
 
 
 if __name__ == '__main__':
-    take_client_cmd_params()
+    client.client_connect()
+
 
