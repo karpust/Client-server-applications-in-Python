@@ -12,6 +12,13 @@ from common.variables import ACTION, TIME, USER, PRESENCE, ACCOUNT_NAME, RESPONS
     MAX_CONNECTION, PORT_DEFAULT, SERVER_ADDRESS_DEFAULT
 from common.utils_oop import Sock
 from socket import SOL_SOCKET, SO_REUSEADDR
+import logging
+import logs.server_log_config
+import json
+from errors import *
+
+# cсылка на созданный логгер:
+SERVER_LOGGER = logging.getLogger('server')
 
 
 class ServSock(Sock):
@@ -22,38 +29,56 @@ class ServSock(Sock):
 
     @staticmethod
     def check_presence_msg(client_msg):
-        if ACTION in client_msg and TIME in client_msg \
-                and USER in client_msg and client_msg[ACTION] == PRESENCE \
-                and client_msg[USER][ACCOUNT_NAME] == 'Guest':
-            return {RESPONSE: 200}
-        return {RESPONSE: 400, ERROR: 'Bad request'}
+        SERVER_LOGGER.debug(f'Разбор сообщения от клиента {client_msg}.')
+        if ACTION in client_msg and TIME in client_msg:
+            if USER in client_msg and client_msg[ACTION] == PRESENCE \
+                    and client_msg[USER][ACCOUNT_NAME] == 'Guest':
+                return {RESPONSE: 200}
+            return {RESPONSE: 400, ERROR: 'Bad request'}
+        raise IncorrectDataRecievedError
 
     def server_connect(self):  # сервер, клиент
         self.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         self.bind((self.listen_address, self.listen_port))
         self.listen(MAX_CONNECTION)
-        print('Сервер в ожидании клиента')
+        SERVER_LOGGER.debug('Сервер в ожидании клиента')
         while True:
-            client, addr = self.accept()
-            print('Сервер соединен с клиентом')
-            from_client_msg = super().recieve_msg(client)
-            print('Получено от клиента: ', from_client_msg)
-            from_server_msg = self.check_presence_msg(from_client_msg)
-            print('Отправлено клиенту: ', from_server_msg)
-            super().send_msg(client, from_server_msg)
-            client.close()
+            client, client_addr = self.accept()
+            SERVER_LOGGER.debug(f'Сервер соединен с клиентом {client_addr}')
+            try:
+                from_client_msg = super().recieve_msg(client)
+                SERVER_LOGGER.debug(f'От клиента {client_addr} получено сообщение: {from_client_msg}')
+                from_server_msg = self.check_presence_msg(from_client_msg)
+                SERVER_LOGGER.info(f'Клиенту {client_addr} отправлено сообщение: {from_server_msg}')
+                super().send_msg(client, from_server_msg)
+            except IncorrectDataRecievedError:
+                SERVER_LOGGER.error(f'От клиента {client_addr} приняты некорректные данные. '
+                                    f'Соединение разорвано.')
+            except json.JSONDecodeError:
+                SERVER_LOGGER.error(f'Не удалось декодировать json-строку, '
+                                    f'полученную от клиента {client_addr}. '
+                                    f'Соединение разорвано')
+            except NotDictInputError as dict_err:
+                SERVER_LOGGER.error(f'Полученное от сервера сообщение {dict_err.not_dict} не является словарем')
+            finally:
+                SERVER_LOGGER.info(f'Завершено соединение с клиентом {client_addr}.')
+                client.close()
 
 
 def take_server_cmd_params():
     #  sys.argv = ['server.py', '-p', 8888, '-a', '127.0.0.1']
     if '-p' in sys.argv:
+        listen_port = sys.argv[sys.argv.index('-p') + 1]
         try:
-            listen_port = int(sys.argv[sys.argv.index('-p') + 1])
+            listen_port = int(listen_port)
         except ValueError:
-            print('Введенное значение порта должно быть числом, попробуйте снова')
+            SERVER_LOGGER.critical(f'Попытка запуска сервера с указанием порта {listen_port}. '
+                                   f'Введенное значение порта должно быть числом')
             sys.exit()
+        listen_port = int(listen_port)
         if listen_port < 1024 or listen_port > 65535:
-            print('Вы ввели неверный номер порта, попробуйте снова')
+            SERVER_LOGGER.critical(f'Попытка запуска сервера с указанием порта {listen_port}. '
+                                   f'Адрес порта должен быть в диапазоне от 1024 до 65535')
             sys.exit()
     else:
         listen_port = PORT_DEFAULT
@@ -63,10 +88,13 @@ def take_server_cmd_params():
         try:
             ip_address(listen_address)
         except ValueError:
-            print('Некорректный ip-адрес, попробуйте снова')
+            SERVER_LOGGER.critical(f'Попытка запуска сервера с указанием ip-адреса {listen_address}. '
+                                   f'Адрес некорректен')
             sys.exit()
     else:
         listen_address = SERVER_ADDRESS_DEFAULT
+    SERVER_LOGGER.info(f'Сервер запущен: ip-адрес для подключений: {listen_address}, '
+                       f'номер порта для подключений: {listen_port}')
     return listen_address, listen_port
 
 

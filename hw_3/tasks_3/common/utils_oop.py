@@ -1,6 +1,7 @@
 import json
 from socket import socket
 from .variables import ENCODING, MAX_PACKAGE_LENGTH
+from errors import *
 
 
 class Sock(socket):
@@ -16,7 +17,7 @@ class Sock(socket):
         кодирует в байты, отправляет данные в сокет
         """
         if not isinstance(msg_dict, dict):
-            raise TypeError
+            raise NotDictInputError
         msg_json_str = json.dumps(msg_dict)  # dict -> str json
         msg_bytes = msg_json_str.encode(ENCODING)  # сообщение в байты
         socket_to.send(msg_bytes)  # отправка сокет сервера|клиента
