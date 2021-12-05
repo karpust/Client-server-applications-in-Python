@@ -6,7 +6,7 @@ import unittest
 sys.path.append(os.path.join(os.getcwd(), '..'))  # добавили путь в корневую дир - на дир выше текущей
 # getcwd - get current working directory
 # pprint(sys.path)
-from client_oop import client
+from client import client
 from common.variables import ACTION, PRESENCE, TIME, TYPE, STATUS, USER, ACCOUNT_NAME, RESPONSE, ERROR
 create_presence_msg = client.create_presence_msg()  # результ-словарь
 check_server_msg = client.check_server_msg  # метод класса

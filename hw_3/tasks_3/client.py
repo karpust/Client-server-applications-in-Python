@@ -12,10 +12,11 @@ import time
 from common.variables import ACTION, PRESENCE, TIME, TYPE, STATUS, USER, \
     ACCOUNT_NAME, RESPONSE, ERROR, CLIENT_ADDRESS_DEFAULT, PORT_DEFAULT
 from ipaddress import ip_address
-from common.utils_oop import Sock
+from common.utils import Sock
 import logging
 import logs.client_log_config
 from errors import *
+from decos import log
 
 CLIENT_LOGGER = logging.getLogger('client')
 
@@ -27,6 +28,7 @@ class ClientSock(Sock):
         self.server_port = server_port
 
     @staticmethod
+    @log
     def create_presence_msg(name_account='Guest'):
         res = {
             ACTION: PRESENCE,
@@ -41,6 +43,7 @@ class ClientSock(Sock):
         return res
 
     @staticmethod
+    @log
     def check_server_msg(server_msg):
         CLIENT_LOGGER.debug(f'Разбор сообщения от сервера {server_msg}')
         if RESPONSE in server_msg:
@@ -49,6 +52,7 @@ class ClientSock(Sock):
             return '400: ' + server_msg[ERROR]
         raise FieldMissingError(RESPONSE)
 
+    @log
     def client_connect(self):
         try:
             self.connect((self.server_address, self.server_port))
@@ -74,6 +78,7 @@ class ClientSock(Sock):
         self.close()
 
 
+@log
 def take_client_cmd_params():
     # sys.argv = ['client.py', '127.0.0.1', 8888]
     try:

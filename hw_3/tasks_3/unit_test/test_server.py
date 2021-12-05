@@ -7,7 +7,7 @@ sys.path.append(os.path.join(os.getcwd(), '..'))  # добавили путь в
 # getcwd - get current working directory
 # pprint(sys.path)
 from common.variables import ACTION, PRESENCE, TIME, TYPE, STATUS, USER, ACCOUNT_NAME, RESPONSE, ERROR
-from server_oop import server
+from server import server
 check_presence_msg = server.check_presence_msg
 
 

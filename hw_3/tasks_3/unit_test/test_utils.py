@@ -7,7 +7,7 @@ from old import client
 
 sys.path.append(os.path.join(os.getcwd(), '..'))
 from common.variables import RESPONSE, ERROR, USER, ACCOUNT_NAME, TIME, ACTION, PRESENCE, ENCODING
-from client_oop import client
+from client import client
 recieve_msg = client.recieve_msg
 send_msg = client.send_msg
 

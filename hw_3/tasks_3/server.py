@@ -10,16 +10,17 @@ import sys
 from ipaddress import ip_address
 from common.variables import ACTION, TIME, USER, PRESENCE, ACCOUNT_NAME, RESPONSE, ERROR, \
     MAX_CONNECTION, PORT_DEFAULT, SERVER_ADDRESS_DEFAULT
-from common.utils_oop import Sock
+from common.utils import Sock
 from socket import SOL_SOCKET, SO_REUSEADDR
 import logging
 import logs.server_log_config
 import json
 from errors import *
+from decos import log
+
 
 # cсылка на созданный логгер:
 SERVER_LOGGER = logging.getLogger('server')
-
 
 class ServSock(Sock):
     def __init__(self, listen_address, listen_port, family=-1, type=-1):
@@ -28,6 +29,7 @@ class ServSock(Sock):
         self.listen_port = listen_port
 
     @staticmethod
+    @log
     def check_presence_msg(client_msg):
         SERVER_LOGGER.debug(f'Разбор сообщения от клиента {client_msg}.')
         if ACTION in client_msg and TIME in client_msg:
@@ -37,6 +39,7 @@ class ServSock(Sock):
             return {RESPONSE: 400, ERROR: 'Bad request'}
         raise IncorrectDataRecievedError
 
+    @log
     def server_connect(self):  # сервер, клиент
         self.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         self.bind((self.listen_address, self.listen_port))
@@ -65,6 +68,7 @@ class ServSock(Sock):
                 client.close()
 
 
+@log
 def take_server_cmd_params():
     #  sys.argv = ['server.py', '-p', 8888, '-a', '127.0.0.1']
     if '-p' in sys.argv:
