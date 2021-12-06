@@ -31,7 +31,7 @@ class Sock(socket):
         """
         msg_bytes = socket_from.recv(MAX_PACKAGE_LENGTH)  # получили в байтах
         if not isinstance(msg_bytes, bytes):
-            raise TypeError
+            raise IncorrectDataRecievedError
         msg_decode = msg_bytes.decode(ENCODING)  # декодировали
         msg_json_dict = json.loads(msg_decode)  # в jsonObj(dict)
         return msg_json_dict

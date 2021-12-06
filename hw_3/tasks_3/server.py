@@ -32,12 +32,12 @@ class ServSock(Sock):
     @log
     def check_presence_msg(client_msg):
         SERVER_LOGGER.debug(f'Разбор сообщения от клиента {client_msg}.')
-        if ACTION in client_msg and TIME in client_msg:
-            if USER in client_msg and client_msg[ACTION] == PRESENCE \
+        if ACTION in client_msg and TIME in client_msg\
+            and USER in client_msg and client_msg[ACTION] == PRESENCE \
                     and client_msg[USER][ACCOUNT_NAME] == 'Guest':
-                return {RESPONSE: 200}
+            return {RESPONSE: 200}
+        else:
             return {RESPONSE: 400, ERROR: 'Bad request'}
-        raise IncorrectDataRecievedError
 
     @log
     def server_connect(self):  # сервер, клиент

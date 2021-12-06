@@ -1,17 +1,3 @@
-
-
-# class Log:
-#     def __init__(self, address, port):  # передаем все из инита декорируемого класса
-#         pass
-#
-#     def __call__(self, *args, **kwargs):
-#         def make_log(func):
-#             pass
-#             # проверяем какому классу принадлежит декорируемый метод: getOwner(func)
-#             # если функция класса сервер ServSock
-#             # вызываем логгер сервера
-#             # если функция класса клиент ClientSock
-#             # вызываем логгер клиента
 import inspect
 import logging
 import sys
@@ -23,7 +9,7 @@ from functools import wraps
 
 def log(func):
     """это декоратор"""
-    # @wraps(func)  # возвращает имя функции и ее докстринг
+    @wraps(func)  # возвращает имя функции и ее докстринг, но здесь не нужно т.к. к имени обращаемся из обертки?
     def wrapper(*args, **kwargs):
         """это обертка"""
         # определим к какому модулю относится декорируемая ф-я
@@ -41,7 +27,6 @@ def log(func):
                      f'Вызов из функции {inspect.stack()[1][3]}')
         return f
     return wrapper
-
 
 
 
