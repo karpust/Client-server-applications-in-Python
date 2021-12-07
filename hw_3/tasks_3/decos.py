@@ -23,8 +23,8 @@ def log(func):
         LOGGER.debug(f'Вызов функции {func.__name__} из модуля {func.__module__}.\n'
                      f'Эта функция вызвана с параметрами {args}, {kwargs}.\n'
                      f'Функция {func.__name__} вызывается из функции '
-                     f'{traceback.format_stack()[0].split()[-1]}\n'
-                     f'Вызов из функции {inspect.stack()[1][3]}')
+                     f'{traceback.format_stack()[0].split()[-1]}\n')
+                     # f'Вызов из функции {inspect.stack()[1][3]}')  # получение родительской ф-ции вариант 2
         return f
     return wrapper
 
