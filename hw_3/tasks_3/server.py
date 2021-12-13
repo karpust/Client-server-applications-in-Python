@@ -7,10 +7,11 @@
 """
 import argparse
 import sys
+import time
 from ipaddress import ip_address
 from select import select
 from common.variables import ACTION, TIME, USER, PRESENCE, ACCOUNT_NAME, RESPONSE, ERROR, \
-    MAX_CONNECTION, PORT_DEFAULT, SERVER_ADDRESS_DEFAULT, MESSAGE, MESSAGE_TEXT
+    MAX_CONNECTION, PORT_DEFAULT, SERVER_ADDRESS_DEFAULT, MESSAGE, MESSAGE_TEXT, SENDER
 from common.utils import Sock
 from socket import SOL_SOCKET, SO_REUSEADDR
 import logging
@@ -23,6 +24,7 @@ from decos import log
 # cсылка на созданный логгер:
 SERVER_LOGGER = logging.getLogger('server')
 
+
 class ServSock(Sock):
     def __init__(self, family=-1, type=-1):
         super().__init__(family, type)
@@ -31,9 +33,10 @@ class ServSock(Sock):
 
     @staticmethod
     @log
-    def check_msg(client, message, message_lst):
+    def check_msg(message, message_lst, client):
         """
-        проверяет сообщение
+        проверяет: коректно ли сообщение
+        и что это за сообщение
         """
         # если это сообщение о присутствии и ок, ответим {RESPONSE: 200}
         SERVER_LOGGER.debug(f'Разбор сообщения от клиента {message}.')
@@ -60,11 +63,13 @@ class ServSock(Sock):
         self.bind((self.listen_address, self.listen_port))
         self.listen(MAX_CONNECTION)
         SERVER_LOGGER.debug('Сервер в ожидании клиента')
+        # список клиентов и очередь сообщений:
         clients = []
+        messages = []
         while True:  # ждем подключения клиента, если подключится - добавим в список клиентов
             try:
                 client, client_addr = self.accept()
-            except OSError:  # если таймаут вышел ловим исключение
+            except OSError:  # если таймаут вышел, ловим исключение
                 pass
             else:
                 clients.append(client)
@@ -81,35 +86,35 @@ class ServSock(Sock):
             except OSError:
                 pass
 
-            # проверяем есть ли у клиентов сообщения:
-            if recv_data_lst:
+            # проверяем есть ли получающие клиенты,
+            # если есть, то добавим словарь-сообщение в очередь,
+            # если нет сообщения, то отсоединяем клиента:
+            if recv_data_lst:  # получающие клиенты
                 for client_with_msg in recv_data_lst:
                     try:
-                        check_msg(send)
+                        self.check_msg(super().recieve_msg(client_with_msg), messages, client_with_msg)
+                    except:
+                        SERVER_LOGGER.info(f'Клиент {client_with_msg.getpeername()} '
+                                           f'отключен от сервера.')
+                        clients.remove(client_with_msg)
 
-
-
-
-
-
-            try:
-                from_client_msg = super().recieve_msg(client)
-                SERVER_LOGGER.debug(f'От клиента {client_addr} получено сообщение: {from_client_msg}')
-                from_server_msg = self.check_presence_msg(from_client_msg)
-                SERVER_LOGGER.info(f'Клиенту {client_addr} отправлено сообщение: {from_server_msg}')
-                super().send_msg(client, from_server_msg)
-            except IncorrectDataRecievedError:
-                SERVER_LOGGER.error(f'От клиента {client_addr} приняты некорректные данные. '
-                                    f'Соединение разорвано.')
-            except json.JSONDecodeError:
-                SERVER_LOGGER.error(f'Не удалось декодировать json-строку, '
-                                    f'полученную от клиента {client_addr}. '
-                                    f'Соединение разорвано')
-            except NotDictInputError as dict_err:
-                SERVER_LOGGER.error(f'Полученное от сервера сообщение {dict_err.not_dict} не является словарем')
-            finally:
-                SERVER_LOGGER.info(f'Завершено соединение с клиентом {client_addr}.')
-                client.close()
+            # если есть сообщения для отправки, и отправляющие клиенты,
+            # отправим сообщения:
+            if messages and send_data_lst:
+                message = {
+                    ACTION: MESSAGE,
+                    SENDER: messages[0][0],
+                    TIME: time.time(),
+                    MESSAGE_TEXT: messages[0][1]
+                }
+                del messages[0]
+                for waiting_msg_client in send_data_lst:
+                    try:
+                        super().send_msg(waiting_msg_client, message)
+                    except:
+                        SERVER_LOGGER.info(f'Клиент {waiting_msg_client.getpeername()} отключился от сервера.')
+                        waiting_msg_client.close()
+                        clients.remove(waiting_msg_client)
 
 
 @log
