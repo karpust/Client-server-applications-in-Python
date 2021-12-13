@@ -6,6 +6,7 @@
     параметры командной строки скрипта client.py <addr> [<port>]:
     addr — ip-адрес сервера; port — tcp-порт на сервере, по умолчанию 7777.
 """
+import argparse
 import json
 import sys
 import time
@@ -22,10 +23,10 @@ CLIENT_LOGGER = logging.getLogger('client')
 
 
 class ClientSock(Sock):
-    def __init__(self, server_address, server_port, family=-1, type=-1):
+    def __init__(self, family=-1, type=-1):
         super().__init__(family, type)
-        self.server_address = server_address
-        self.server_port = server_port
+        self.server_address = None
+        self.server_port = None
 
     @staticmethod
     @log
@@ -54,6 +55,7 @@ class ClientSock(Sock):
 
     @log
     def client_connect(self):
+        self.server_address, self.server_port = cmd_arg_parse()
         try:
             self.connect((self.server_address, self.server_port))
             client_msg = self.create_presence_msg()
@@ -77,35 +79,31 @@ class ClientSock(Sock):
         CLIENT_LOGGER.info(f'Клиент завершил соединение с сервером')
         self.close()
 
-
 @log
-def take_client_cmd_params():
-    # sys.argv = ['client.py', '127.0.0.1', 8888]
+def cmd_arg_parse():  # sys.argv = ['client.py', '127.0.0.1', 8888]
+    parser = argparse.ArgumentParser()  # создаем объект парсер
+    parser.add_argument('addr', default='127.0.0.1', nargs='?')  # описываем позиционные аргументы
+    parser.add_argument('port', default=7777, type=int, nargs='?')
+    namespace = parser.parse_args(sys.argv[1:])
+    server_address = namespace.addr
+    server_port = namespace.port
     try:
-        server_address = sys.argv[1]
-        try:
-            ip_address(server_address)
-        except ValueError:
-            CLIENT_LOGGER.critical(f'Попытка запуска клиента с указанием ip-адреса {server_address}.'
-                                   f'Адрес некорректен')
-            sys.exit()
-    except IndexError:
-        server_address = CLIENT_ADDRESS_DEFAULT
+        ip_address(server_address)
+    except ValueError:
+        CLIENT_LOGGER.critical(f'Попытка запуска клиента с указанием ip-адреса {server_address}. '
+                               f'Адрес некорректен')
+        sys.exit(1)
 
-    try:
-        server_port = int(sys.argv[2])
-        if server_port < 1024 or server_port > 65535:
-            CLIENT_LOGGER.critical(f'Попытка запуска клиента с указанием порта: {server_port}'
-                                   f'Адрес порта должен быть в диапазоне от 1024 до 65535')
-            sys.exit()
-    except IndexError:
-        server_port = PORT_DEFAULT
+    if server_port < 1024 or server_port > 65535:
+        CLIENT_LOGGER.critical(f'Попытка запуска клиента с указанием порта: {server_port}. '
+                               f'Адрес порта должен быть в диапазоне от 1024 до 65535')
+        sys.exit(1)
     CLIENT_LOGGER.info(f'Клиент запущен с параметрами: адрес сервера: {server_address}, '
                        f'порт сервера: {server_port}.')
     return server_address, server_port
 
 
-client = ClientSock(*take_client_cmd_params())
+client = ClientSock()
 
 
 if __name__ == '__main__':
