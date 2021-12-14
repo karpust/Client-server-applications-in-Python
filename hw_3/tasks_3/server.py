@@ -89,7 +89,7 @@ class ServSock(Sock):
             # проверяем есть ли получающие клиенты,
             # если есть, то добавим словарь-сообщение в очередь,
             # если нет сообщения, то отсоединяем клиента:
-            if recv_data_lst:  # получающие клиенты
+            if recv_data_lst:  # клиенты отправляющие
                 for client_with_msg in recv_data_lst:
                     try:
                         self.check_msg(super().recieve_msg(client_with_msg), messages, client_with_msg)
@@ -145,7 +145,7 @@ def cmd_arg_parse():
 
 
 server = ServSock()
-server.settimeout(1)  # будет ждать подключений указанное время
+server.settimeout(10)  # будет ждать подключений указанное время
 
 
 if __name__ == '__main__':

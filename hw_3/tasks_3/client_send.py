@@ -149,7 +149,7 @@ def cmd_arg_parse():  # sys.argv = ['client.py', '127.0.0.1', 8888]
     parser = argparse.ArgumentParser()  # создаем объект парсер
     parser.add_argument('addr', default='127.0.0.1', nargs='?')  # описываем позиционные аргументы
     parser.add_argument('port', default=7777, type=int, nargs='?')
-    parser.add_argument('-m', '--mode', default='listen', nargs='?')
+    parser.add_argument('-m', '--mode', default='send', nargs='?')
     namespace = parser.parse_args(sys.argv[1:])
     server_address = namespace.addr
     server_port = namespace.port
