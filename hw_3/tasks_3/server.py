@@ -31,25 +31,24 @@ class ServSock(Sock):
         self.listen_address = None
         self.listen_port = None
 
-    @staticmethod
     @log
-    def check_msg(message, message_lst, client):
+    def check_msg(self, message, message_lst, client):
         """
-        проверяет: коректно ли сообщение
-        и что это за сообщение
+        проверяет сообщение клиента:
+        если это сообщение о присутствии - отправить ответ клиенту,
+        если это сообщение др клиенту - добавить сообщение в очередь
         """
         # если это сообщение о присутствии и ок, ответим {RESPONSE: 200}
         SERVER_LOGGER.debug(f'Разбор сообщения от клиента {message}.')
-        if ACTION in message and TIME in message\
-            and USER in message and message[ACTION] == PRESENCE \
-                    and message[USER][ACCOUNT_NAME] == 'Guest':
+        if ACTION in message and TIME in message \
+                and USER in message and message[ACTION] == PRESENCE \
+                and message[USER][ACCOUNT_NAME] == 'Guest':
             super().send_msg(client, {RESPONSE: 200})
             return
         # если это обычное сообщение, добавим его в очередь
         elif ACTION in message and TIME in message \
-                and USER in message and message[ACTION] == MESSAGE \
-                and MESSAGE_TEXT in message:
-            message_lst.append(message[ACCOUNT_NAME], message[MESSAGE_TEXT])
+                and MESSAGE_TEXT in message and message[ACTION] == MESSAGE:
+            message_lst.append((message[ACCOUNT_NAME], message[MESSAGE_TEXT]))
             return
         # если некорректное то вернем ERROR: 'Bad request'
         else:
@@ -74,22 +73,22 @@ class ServSock(Sock):
             else:
                 clients.append(client)
                 SERVER_LOGGER.debug(f'Сервер соединен с клиентом {client_addr}')
-            # список получающих, список отправляющих, список вернувших ошибки:
-            recv_data_lst = []
-            send_data_lst = []
-            err_lst = []
+            recv_data_lst = []  # список клиентов которые получают на чтение
+            send_data_lst = []  # список клиентов которые отправляют
+            err_lst = []  # список клиентов на возврат ошибки
 
             # проверяем есть ли ожидающие клиенты:
             try:
                 if clients:
                     recv_data_lst, send_data_lst, err_lst = select(clients, clients, [], 0)
+                    # на чтение, на отправку, на возврат ошибки
             except OSError:
                 pass
 
             # проверяем есть ли получающие клиенты,
             # если есть, то добавим словарь-сообщение в очередь,
-            # если нет сообщения, то отсоединяем клиента:
-            if recv_data_lst:  # клиенты отправляющие
+            # если нет сообщения - отключим клиента:
+            if recv_data_lst:
                 for client_with_msg in recv_data_lst:
                     try:
                         self.check_msg(super().recieve_msg(client_with_msg), messages, client_with_msg)
@@ -99,7 +98,7 @@ class ServSock(Sock):
                         clients.remove(client_with_msg)
 
             # если есть сообщения для отправки, и отправляющие клиенты,
-            # отправим сообщения:
+            # сформируем сообщение:
             if messages and send_data_lst:
                 message = {
                     ACTION: MESSAGE,
@@ -107,10 +106,10 @@ class ServSock(Sock):
                     TIME: time.time(),
                     MESSAGE_TEXT: messages[0][1]
                 }
-                del messages[0]
+                del messages[0]  # удалим сообщение из очереди
                 for waiting_msg_client in send_data_lst:
                     try:
-                        super().send_msg(waiting_msg_client, message)
+                        super().send_msg(waiting_msg_client, message)  # отправим сообщение
                     except:
                         SERVER_LOGGER.info(f'Клиент {waiting_msg_client.getpeername()} отключился от сервера.')
                         waiting_msg_client.close()
