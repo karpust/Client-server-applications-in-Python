@@ -101,11 +101,11 @@ class ClientSock(Sock):
                            f'порт {self.server_port}, режим работы: {self.client_mode}.')
         try:
             self.connect((self.server_address, self.server_port))
-            # client_msg = self.create_presence_msg()
-            # super().send_msg(self, client_msg)
-            # server_msg = super().recieve_msg(self)
-            # CLIENT_LOGGER.info(f'Получено сообщение от сервера: {server_msg}')
-            # self.check_server_msg(server_msg)
+            client_msg = self.create_presence_msg()
+            super().send_msg(self, client_msg)
+            server_msg = super().recieve_msg(self)
+            CLIENT_LOGGER.info(f'Получено сообщение от сервера: {server_msg}')
+            self.check_server_msg(server_msg)
         except FieldMissingError as missing_err:
             CLIENT_LOGGER.critical(f'В ответе сервера отсутствует необходимое поле:'
                                    f'{missing_err.miss_field}')

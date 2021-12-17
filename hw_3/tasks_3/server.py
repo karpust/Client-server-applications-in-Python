@@ -144,7 +144,7 @@ def cmd_arg_parse():
 
 
 server = ServSock()
-server.settimeout(10)  # будет ждать подключений указанное время
+server.settimeout(1)  # будет ждать подключений указанное время
 
 
 if __name__ == '__main__':
