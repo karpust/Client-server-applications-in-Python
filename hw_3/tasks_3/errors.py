@@ -2,8 +2,9 @@
 
 
 class IncorrectDataRecievedError(Exception):
-    """ошибка некорректных данных полученных
-    в сокет"""
+    """
+    ошибка некорректных данных полученных в сокет
+    """
     def __str__(self):
         return "Принято некорректное сообщение от удаленного пользователя"
 
@@ -20,10 +21,19 @@ class NotDictInputError(Exception):
 
 
 class FieldMissingError(Exception):
-    """Исключение: в принятом словаре отсутствует обязательное поле"""
+    """
+    Исключение: в принятом словаре отсутствует обязательное поле
+    """
     def __init__(self, miss_field):
         self.miss_field = miss_field
 
     def __str__(self):
         return f"В принятом словаре отсутствует обязятельное поле: {self.miss_field}"
 
+
+class ServerError(Exception):
+    def __init__(self, text):
+        self.text = text
+
+    def __str__(self):
+        return self.text

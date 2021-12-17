@@ -32,7 +32,7 @@ class ServSock(Sock):
         self.listen_port = None
 
     @log
-    def check_msg(self, message, message_lst, client):
+    def check_msg(self, message, message_lst, client, clients, names):
         """
         проверяет сообщение клиента:
         если это сообщение о присутствии - отправить ответ клиенту,
@@ -41,9 +41,18 @@ class ServSock(Sock):
         # если это сообщение о присутствии и ок, ответим {RESPONSE: 200}
         SERVER_LOGGER.debug(f'Разбор сообщения от клиента {message}.')
         if ACTION in message and TIME in message \
-                and USER in message and message[ACTION] == PRESENCE \
-                and message[USER][ACCOUNT_NAME] == 'Guest':
-            super().send_msg(client, {RESPONSE: 200})
+                and USER in message and message[ACTION] == PRESENCE:
+            # если такой пользователь еще не зарегистрирован,
+            # регистрируем иначе ошибка:
+            if message[USER][ACCOUNT_NAME] not in names.keys():
+                names[message[USER][ACCOUNT_NAME]] = client
+                super().send_msg(client, {RESPONSE: 200})
+            else:
+                response = {RESPONSE: 400, ERROR: 'Bad request'}
+                response[ERROR] = 'Имя пользователя уже занято.'
+                super().send_msg(client, response)
+                client.remove(client)
+                client.close()
             return
         # если это обычное сообщение, добавим его в очередь
         elif ACTION in message and TIME in message \

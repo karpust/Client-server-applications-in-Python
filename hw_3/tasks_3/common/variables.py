@@ -21,5 +21,6 @@ MESSAGE = 'message'
 RESPONSE = 'response'
 ERROR = 'error'
 MESSAGE_TEXT = 'message_text'
-SENDER = 'sender'
-
+SENDER = 'from'
+DESTINATION = 'to'
+EXIT = 'exit'
