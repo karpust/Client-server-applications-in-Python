@@ -1,7 +1,10 @@
 import json
+import sys
 from socket import socket
 from .variables import ENCODING, MAX_PACKAGE_LENGTH
 from errors import *
+from decos import log
+sys.path.append('../')
 
 
 class Sock(socket):
@@ -10,6 +13,7 @@ class Sock(socket):
         super().__init__(family, type)  # чтобы обратиться к параметрам родителя и изменить их если нужно
 
     @staticmethod
+    @log
     def send_msg(socket_to, msg_dict):
         """
         принимает словарь
@@ -23,6 +27,7 @@ class Sock(socket):
         socket_to.send(msg_bytes)  # отправка сокет сервера|клиента
 
     @staticmethod
+    @log
     def recieve_msg(socket_from):
         """
         принимает байты

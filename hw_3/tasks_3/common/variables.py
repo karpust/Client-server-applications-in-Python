@@ -24,3 +24,5 @@ MESSAGE_TEXT = 'message_text'
 SENDER = 'from'
 DESTINATION = 'to'
 EXIT = 'exit'
+RESPONSE_400 = {RESPONSE: 400, ERROR: 'Bad request'}
+RESPONSE_200 = {RESPONSE: 200}

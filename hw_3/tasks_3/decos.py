@@ -20,10 +20,10 @@ def log(func):
             LOGGER = logging.getLogger('server')
 
         f = func(*args, **kwargs)
-        LOGGER.debug(f'Вызов функции {func.__name__} из модуля {func.__module__}.\n'
-                     f'Эта функция вызвана с параметрами {args}, {kwargs}.\n'
+        LOGGER.debug(f'Вызов функции {func.__name__} из модуля {func.__module__}. '
+                     f'Эта функция вызвана с параметрами {args}, {kwargs}. '
                      f'Функция {func.__name__} вызывается из функции '
-                     f'{traceback.format_stack()[0].split()[-1]}\n')
+                     f'{traceback.format_stack()[0].split()[-1]} ')
                      # f'Вызов из функции {inspect.stack()[1][3]}')  # получение родительской ф-ции вариант 2
         return f
     return wrapper

@@ -56,9 +56,9 @@ class ClientSock(Sock):
                 if ACTION in message and SENDER in message \
                     and DESTINATION in message and MESSAGE_TEXT in message \
                         and message[ACTION] == MESSAGE and message[DESTINATION] == user_name:
-                    print(f'Получено сообщение от пользователя {message[SENDER]}:\n'
+                    print(f'Получено сообщение от пользователя {message[SENDER]}: '
                           f'{message[MESSAGE_TEXT]}')
-                    CLIENT_LOGGER.info(f'Получено сообщение от пользователя {message[SENDER]}:\n'
+                    CLIENT_LOGGER.info(f'Получено сообщение от пользователя {message[SENDER]}: '
                                        f'{message[MESSAGE_TEXT]}')
                 else:
                     CLIENT_LOGGER.error(f'От сервера получено некорректное сообщение {message}:')
@@ -77,18 +77,17 @@ class ClientSock(Sock):
         """
 
         to_user = input('Введите имя получателя: ')
-        msg = input('Введите текст сообщения')
+        msg = input('Введите текст сообщения: ')
         message = {
             ACTION: MESSAGE,
             TIME: time.time(),
-            ACCOUNT_NAME: name_account,
             MESSAGE_TEXT: msg,
             DESTINATION: to_user,
             SENDER: name_account
         }
         CLIENT_LOGGER.debug(f'Сформирован словарь сообщения {message}')
         try:
-            super().send_msg(self, message)                                                     # что это за сокет, откуда или кому ?  это сокет клиента
+            super().send_msg(self, message)              # что это за сокет, откуда или кому ?  это сокет клиента
             CLIENT_LOGGER.info(f'Отправлено сообщение для пользователя {to_user}')
         except:
             CLIENT_LOGGER.critical('Потеряно соединение с сервером')
@@ -108,9 +107,10 @@ class ClientSock(Sock):
                 self.output_help()
             elif command == 'exit':
                 print('Завершение работы')
-                self.create_exit_msg(user_name)
+                super().send_msg(self, self.create_exit_msg(user_name))
                 CLIENT_LOGGER.info(f'Пользователь {user_name} завершил работу')
                 time.sleep(0.5)  # задержка чтобы успело уйти сообщение
+                break
             else:
                 print('Неизвестная команда, попробуйте снова. Для справки введите \'help\'.')
 
@@ -150,7 +150,8 @@ class ClientSock(Sock):
         if RESPONSE in server_msg:
             if server_msg[RESPONSE] == 200:
                 return '200: OK'
-            return '400: ' + server_msg[ERROR]
+            elif server_msg[RESPONSE] == 400:
+                raise ServerError(f'400 : {server_msg[ERROR]}')
         raise FieldMissingError(RESPONSE)
 
     @log
@@ -194,7 +195,7 @@ class ClientSock(Sock):
         # соединение с сервером:
         try:
             self.connect((self.server_address, self.server_port))
-            client_msg = self.create_presence_msg()
+            client_msg = self.create_presence_msg(self.client_name)
             super().send_msg(self, client_msg)
             server_msg = super().recieve_msg(self)
             server_ans = self.check_server_msg(server_msg)
@@ -222,12 +223,12 @@ class ClientSock(Sock):
 
         # если соединение с сервером установлено корректно,
         # то запускаем клиентский поток приема сообщений:
-        reciever = threading.Thread(target=self.check_messages_by_server, args=(self, self.client_name))
+        reciever = threading.Thread(target=self.check_messages_by_server, args=(self.client_name, ))
         reciever.daemon = True
         reciever.start()
 
         # запускаем поток отправки сообщений и взаимодействия с пользователем:
-        user_interface = threading.Thread(target=self.users_interplay, args=(self, self.client_name))
+        user_interface = threading.Thread(target=self.users_interplay, args=(self.client_name, ))
         user_interface.daemon = True
         user_interface.start()
         CLIENT_LOGGER.debug('Запущены процессы')

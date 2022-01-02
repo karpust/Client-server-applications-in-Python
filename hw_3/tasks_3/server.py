@@ -11,7 +11,8 @@ import time
 from ipaddress import ip_address
 from select import select
 from common.variables import ACTION, TIME, USER, PRESENCE, ACCOUNT_NAME, RESPONSE, ERROR, \
-    MAX_CONNECTION, PORT_DEFAULT, SERVER_ADDRESS_DEFAULT, MESSAGE, MESSAGE_TEXT, SENDER
+    MAX_CONNECTION, PORT_DEFAULT, SERVER_ADDRESS_DEFAULT, MESSAGE, MESSAGE_TEXT, SENDER, \
+    DESTINATION, EXIT, RESPONSE_200, RESPONSE_400
 from common.utils import Sock
 from socket import SOL_SOCKET, SO_REUSEADDR
 import logging
@@ -46,34 +47,43 @@ class ServSock(Sock):
             # регистрируем иначе ошибка:
             if message[USER][ACCOUNT_NAME] not in names.keys():
                 names[message[USER][ACCOUNT_NAME]] = client
-                super().send_msg(client, {RESPONSE: 200})
+                super().send_msg(client, RESPONSE_200)
             else:
-                response = {RESPONSE: 400, ERROR: 'Bad request'}
+                response = RESPONSE_400
                 response[ERROR] = 'Имя пользователя уже занято.'
                 super().send_msg(client, response)
                 client.remove(client)
                 client.close()
             return
         # если это обычное сообщение, добавим его в очередь
-        elif ACTION in message and TIME in message \
-                and MESSAGE_TEXT in message and message[ACTION] == MESSAGE:
-            message_lst.append((message[ACCOUNT_NAME], message[MESSAGE_TEXT]))
+        elif ACTION in message and TIME in message and DESTINATION in message \
+                and MESSAGE_TEXT in message and SENDER in message and message[ACTION] == MESSAGE:
+            message_lst.append(message)
             return
-        # если некорректное то вернем ERROR: 'Bad request'
+        # если клиент выходит:
+        elif ACTION in message and ACCOUNT_NAME in message and message[ACTION] == EXIT:
+            clients.remove(names[message[ACCOUNT_NAME]])
+            names[message[ACCOUNT_NAME]].close()
+            del names[message[ACCOUNT_NAME]]
+            return
         else:
-            super().send_msg(client, {RESPONSE: 400, ERROR: 'Bad request'})
+            response = RESPONSE_400
+            response[ERROR] = 'запрос не корректен'
+            super().send_msg(client, response)
             return
 
     @log
     def server_connect(self):  # сервер, клиент
-        self.listen_address, self.listen_port = cmd_arg_parse()
+        self.listen_address, self.listen_port = self.cmd_arg_parse()
         self.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         self.bind((self.listen_address, self.listen_port))
         self.listen(MAX_CONNECTION)
         SERVER_LOGGER.debug('Сервер в ожидании клиента')
-        # список клиентов и очередь сообщений:
-        clients = []
-        messages = []
+
+        clients = []  # список клиентов
+        messages = []  # очередь сообщений
+        names = dict()  # словарь с именами клиентов
+
         while True:  # ждем подключения клиента, если подключится - добавим в список клиентов
             try:
                 client, client_addr = self.accept()
@@ -100,60 +110,68 @@ class ServSock(Sock):
             if recv_data_lst:
                 for client_with_msg in recv_data_lst:
                     try:
-                        self.check_msg(super().recieve_msg(client_with_msg), messages, client_with_msg)
-                    except:
+                        self.check_msg(super().recieve_msg(client_with_msg), messages, client_with_msg, clients, names)
+                    except Exception:
                         SERVER_LOGGER.info(f'Клиент {client_with_msg.getpeername()} '
                                            f'отключен от сервера.')
                         clients.remove(client_with_msg)
 
-            # если есть сообщения для отправки, и отправляющие клиенты,
-            # сформируем сообщение:
-            if messages and send_data_lst:
-                message = {
-                    ACTION: MESSAGE,
-                    SENDER: messages[0][0],
-                    TIME: time.time(),
-                    MESSAGE_TEXT: messages[0][1]
-                }
-                del messages[0]  # удалим сообщение из очереди
-                for waiting_msg_client in send_data_lst:
-                    try:
-                        super().send_msg(waiting_msg_client, message)  # отправим сообщение
-                    except:
-                        SERVER_LOGGER.info(f'Клиент {waiting_msg_client.getpeername()} отключился от сервера.')
-                        waiting_msg_client.close()
-                        clients.remove(waiting_msg_client)
+            # если есть сообщения то обрабатываем каждое:
+            for msg in messages:
+                try:
+                    self.send_to_msg(msg, names, send_data_lst)
+                except Exception:
+                    SERVER_LOGGER.info(f'Связь с клиентом с именем {msg[DESTINATION]} была потеряна ')
+                    clients.remove(names[msg[DESTINATION]])
+                    del names[msg[DESTINATION]]
+                messages.clear()
 
+    @log
+    def send_to_msg(self, message, names, listen_socks):
+        """
+        функция адресной отправки сообщения конкретному клиенту.
+        принимает словарь-сообщение, список зарегистрированных пользователей
+        и слушающие сокеты. Ничего не возвращает.
+        """
+        if message[DESTINATION] in names and names[message[DESTINATION]] in listen_socks:
+            super().send_msg(names[message[DESTINATION]], message)
+            SERVER_LOGGER.info(f'Отправлено сообщение пользователю {message[DESTINATION]} '
+                               f'от пользователя {message[SENDER]}')
+        elif message[DESTINATION] in names and names[message[DESTINATION]] not in listen_socks:
+            raise ConnectionError
+        else:
+            SERVER_LOGGER.error(f'Пользователь {message[DESTINATION]} не зарегистророван '
+                                f'на сервере. Отправка сообщения невозможна.')
 
-@log
-def cmd_arg_parse():
-    parser = argparse.ArgumentParser()  # создаем объект парсер
-    # описываем аргументы которые парсер будет считывать из cmd:
-    parser.add_argument('-p', default=7777, type=int, nargs='?')  # описываем именные аргументы
-    parser.add_argument('-a', default='', nargs='?')
-    # nargs='?' значит: если присутствует один аргумент – он будет сохранён,
-    # иначе – будет использовано значение из ключа default
-    namespace = parser.parse_args(sys.argv[1:])  # все кроме имени скрипта
-    listen_address = namespace.a
-    listen_port = namespace.p
-    if listen_port < 1024 or listen_port > 65535:
-        SERVER_LOGGER.critical(f'Попытка запуска сервера с указанием порта {listen_port}. '
-                               f'Адрес порта должен быть в диапазоне от 1024 до 65535')
-        sys.exit(1)
-    if listen_address != '':
-        try:
-            ip_address(listen_address)
-        except ValueError:
-            SERVER_LOGGER.critical(f'Попытка запуска сервера с указанием ip-адреса {listen_address}. '
-                                   f'Адрес некорректен')
+    @log
+    def cmd_arg_parse(self):
+        parser = argparse.ArgumentParser()  # создаем объект парсер
+        # описываем аргументы которые парсер будет считывать из cmd:
+        parser.add_argument('-p', default=7777, type=int, nargs='?')  # описываем именные аргументы
+        parser.add_argument('-a', default='', nargs='?')
+        # nargs='?' значит: если присутствует один аргумент – он будет сохранён,
+        # иначе – будет использовано значение из ключа default
+        namespace = parser.parse_args(sys.argv[1:])  # все кроме имени скрипта
+        self.listen_address = namespace.a
+        self.listen_port = namespace.p
+        if self.listen_port < 1024 or self.listen_port > 65535:
+            SERVER_LOGGER.critical(f'Попытка запуска сервера с указанием порта {self.listen_port}. '
+                                   f'Адрес порта должен быть в диапазоне от 1024 до 65535')
             sys.exit(1)
-    SERVER_LOGGER.info(f'Сервер запущен: ip-адрес для подключений: {listen_address}, '
-                       f'номер порта для подключений: {listen_port}')
-    return listen_address, listen_port
+        if self.listen_address != '':
+            try:
+                ip_address(self.listen_address)
+            except ValueError:
+                SERVER_LOGGER.critical(f'Попытка запуска сервера с указанием ip-адреса {self.listen_address}. '
+                                       f'Адрес некорректен')
+                sys.exit(1)
+        SERVER_LOGGER.info(f'Сервер запущен: ip-адрес для подключений: {self.listen_address}, '
+                           f'номер порта для подключений: {self.listen_port}')
+        return self.listen_address, self.listen_port
 
 
 server = ServSock()
-server.settimeout(1)  # будет ждать подключений указанное время
+server.settimeout(10)  # будет ждать подключений указанное время
 
 
 if __name__ == '__main__':
